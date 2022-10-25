@@ -1,3 +1,4 @@
+from email.policy import default
 from tqdm import tqdm
 import numpy as np 
 import torch
@@ -5,10 +6,9 @@ import shutil
 from datetime import datetime
 import os,sys
 current_file_name = __file__
-current_dir=os.path.dirname(os.path.dirname(os.path.abspath(current_file_name)))
+current_dir=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(current_file_name))))
 if current_dir not in sys.path:
     sys.path.append(current_dir)
-from utils.common_params import IN_FEATURE_MAP
 from utils.common import lcprint
 
 
@@ -67,7 +67,6 @@ loss_fun = loss_fun_BCE
 
 def set_subargs(parser):
 
-    parser.add_argument('--logdir', type=str, default='tmp')
     parser.add_argument('--num_epoch', type=int, help='Training epoch')
     parser.add_argument('--lr', type=float, help='learning rate')
     parser.add_argument('--weight_decay', type=float, default=0.0)
@@ -75,49 +74,27 @@ def set_subargs(parser):
     parser.add_argument('--drop_prob', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=300)
     parser.add_argument('--subgraph_size', type=int, default=4)
-    parser.add_argument('--auc_test_rounds', type=int)
+    parser.add_argument('--auc_test_rounds', type=int, default=256)
     parser.add_argument('--num_workers', type=int, default=8)
     parser.add_argument('--negsamp_ratio', type=int, default=1)
-    parser.add_argument('--global_adg', type=bool, default=True)  
+    parser.add_argument('--global_adg', type=lambda x: x.lower() == 'true', default=True)  
     parser.add_argument('--alpha', type = float, default = 1.0)
     parser.add_argument('--beta', type = float, default = 0.6)
     parser.add_argument('--act_function', type = str, default= "PReLU")
     parser.add_argument('--degree_coefficient', type=float, default=-1)
-    parser.add_argument('--attention', type=bool, default=False)
-    parser.add_argument('--positive_subgraph_cor', type=bool, default=False)
-    parser.add_argument('--negative_subgraph_cor', type=bool, default=False)
-    parser.add_argument('--arw', type=bool, default=False)
+    parser.add_argument('--attention', type=lambda x: x.lower() == 'true', default=False)
+    parser.add_argument('--positive_subgraph_cor', type=lambda x: x.lower() == 'true', default=False)
+    parser.add_argument('--negative_subgraph_cor', type=lambda x: x.lower() == 'true', default=False)
+    parser.add_argument('--arw', type=lambda x: x.lower() == 'true', default=False)
     parser.add_argument('--patience', type=int, default=400)
     parser.add_argument('--expid', type=int)
 
 def get_subargs(args):
-    if os.path.exists(args.logdir):
-        shutil.rmtree(args.logdir)
-
-    if args.lr is None:
-        if args.dataset in ['Cora', 'Citeseer', 'Pubmed', 'Flickr']:
-            args.lr = 1e-3
-        elif args.dataset == 'ACM':
-            args.lr = 5e-4
-        elif args.dataset == 'BlogCatalog':
-            args.lr = 3e-3
-        elif args.dataset == 'ogbn-arxiv':
-            args.lr = 1e-3
-
-    if args.num_epoch is None:
-        if args.dataset in ['Cora', 'Citeseer', 'Pubmed']:
-            args.num_epoch = 100
-        elif args.dataset in ['BlogCatalog', 'Flickr', 'ACM']:
-            args.num_epoch = 400
-        else:
-            args.num_epoch = 10
-
-
     final_args_dict = {
         "dataset": args.dataset,
         "seed":args.seed,
         "model":{
-            "in_feats":IN_FEATURE_MAP[args.dataset],
+            "in_feats":args.feat_dim,
             "out_feats":args.embedding_dim,
             "global_adg":args.global_adg,
             "alpha":args.alpha,
@@ -128,7 +105,6 @@ def get_subargs(args):
             "batch_size":args.batch_size,
             "num_epoch":args.num_epoch,
             "lr":args.lr,
-            "logdir":args.logdir,
             "weight_decay":args.weight_decay,
         },
         "predict":{
@@ -136,7 +112,6 @@ def get_subargs(args):
             "batch_size":args.batch_size,
             "num_workers":args.num_workers,
             "auc_test_rounds":args.auc_test_rounds,
-            "logdir":args.logdir
         }
     }
     return final_args_dict, args

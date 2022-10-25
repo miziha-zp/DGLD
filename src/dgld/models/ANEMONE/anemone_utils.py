@@ -9,7 +9,6 @@ import os
 
 sys.path.append('../../')
 # from utils.print import cprint, lcprint
-from utils.common_params import IN_FEATURE_MAP
 
 def set_subargs(parser):
     """
@@ -31,45 +30,15 @@ def set_subargs(parser):
     parser.add_argument('--auc_test_rounds', type=int)
     parser.add_argument('--num_workers', type=int, default=8)
     parser.add_argument('--negsamp_ratio', type=int, default=1)
-    parser.add_argument('--logdir', type=str, default='tmp')
-    parser.add_argument('--global_adg', type=bool, default=True)
+    parser.add_argument('--global_adg', type=lambda x: x.lower() == 'true', default=True)
 
 
 def get_subargs(args):
-    if os.path.exists(args.logdir):
-        shutil.rmtree(args.logdir)
-    else:
-        os.makedirs(args.logdir)
-
-    if args.lr is None:
-        if args.dataset in ['Cora', 'Citeseer', 'Pubmed', 'Flickr']:
-            args.lr = 1e-3
-        elif args.dataset == 'ACM':
-            args.lr = 5e-4
-        elif args.dataset == 'BlogCatalog':
-            args.lr = 3e-3
-        elif args.dataset == 'ogbn-arxiv':
-            args.lr = 1e-3
-
-    if args.num_epoch is None:
-        if args.dataset in ['Cora', 'Citeseer', 'Pubmed']:
-            args.num_epoch = 100
-        elif args.dataset in ['BlogCatalog', 'Flickr', 'ACM']:
-            args.num_epoch = 400
-        else:
-            args.num_epoch = 10
-
-    if args.auc_test_rounds is None:
-        if args.dataset != 'ogbn-arxiv':
-            args.auc_test_rounds = 256
-        else:
-            args.auc_test_rounds = 20
-
     final_args_dict = {
         "dataset": args.dataset,
         "seed": args.seed,
         "model": {
-            "in_feats": IN_FEATURE_MAP[args.dataset],
+            "in_feats": args.feat_dim,
             "out_feats": args.embedding_dim,
             "global_adg": args.global_adg
         },
@@ -78,7 +47,6 @@ def get_subargs(args):
             "batch_size": args.batch_size,
             "num_epoch": args.num_epoch,
             "lr": args.lr,
-            "logdir": args.logdir,
             "weight_decay": args.weight_decay,
             "seed": args.seed,
         },
@@ -87,7 +55,6 @@ def get_subargs(args):
             "batch_size": args.batch_size,
             "num_workers": args.num_workers,
             "auc_test_rounds": args.auc_test_rounds,
-            "logdir": args.logdir
         }
     }
     return final_args_dict, args
@@ -159,7 +126,7 @@ def train_epoch(epoch,alpha, loader, net, device, criterion, optimizer):
         optimizer.zero_grad()
         pos_scores_rdt, pos_scores_rec, neg_scores_rdt, neg_scores_rec = net(pos_subgraph, posfeat, neg_subgraph,
                                                                              negfeat)
-        loss, acc = loss_fun(pos_scores_rdt, pos_scores_rec, neg_scores_rdt, neg_scores_rec, criterion, device,alpha)
+        loss, acc = loss_fun(pos_scores_rdt, pos_scores_rec, neg_scores_rdt, neg_scores_rec, criterion, device, alpha)
         # print('loss::::::',loss)
         loss.backward()
         optimizer.step()
@@ -168,7 +135,7 @@ def train_epoch(epoch,alpha, loader, net, device, criterion, optimizer):
     return loss_accum
 
 
-def test_epoch(epoch, alpha, loader, net, device, criterion, optimizer):
+def test_epoch(epoch, alpha, loader, net, device, criterion):
     """test_epoch, test model in one epoch
     Parameters
     ----------
@@ -203,7 +170,7 @@ def test_epoch(epoch, alpha, loader, net, device, criterion, optimizer):
             alpha * (torch.sigmoid(neg_scores_rdt) - torch.sigmoid(pos_scores_rdt)).detach().cpu().numpy() + (
                         1 - alpha) * (
                         torch.sigmoid(neg_scores_rec) - torch.sigmoid(pos_scores_rec)).detach().cpu().numpy()))
-        loss, acc = loss_fun(pos_scores_rdt, pos_scores_rec, neg_scores_rdt, neg_scores_rec, criterion, device, args)
+        loss, acc = loss_fun(pos_scores_rdt, pos_scores_rec, neg_scores_rdt, neg_scores_rec, criterion, device, alpha)
         loss_accum += loss.item()
     loss_accum /= (step + 1)
     # lcprint('VALID==>epoch', epoch, 'Average valid loss: {:.2f}'.format(loss_accum), color='blue')

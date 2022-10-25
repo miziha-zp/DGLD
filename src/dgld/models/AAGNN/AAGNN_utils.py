@@ -1,14 +1,11 @@
 import shutil
 import os,sys
 current_file_name = __file__
-current_dir=os.path.dirname(os.path.dirname(os.path.abspath(current_file_name)))
+current_dir=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(current_file_name))))
 if current_dir not in sys.path:
     sys.path.append(current_dir)
-from utils.common_params import IN_FEATURE_MAP
-
 
 def set_subargs(parser):
-    parser.add_argument('--logdir', type=str, default='tmp')
     parser.add_argument('--out_feats', type=int, default=256,
                         help='dimension of hidden embedding (default: 64)')
     parser.add_argument('--out_dim', type=int, default=128,
@@ -28,61 +25,15 @@ def set_subargs(parser):
                         help='structure penalty balance parameter')
 
 def get_subargs(args):
-
-    if os.path.exists(args.logdir):
-        shutil.rmtree(args.logdir)
-
-    if args.lr is None:
-        if args.dataset in ['Cora', 'Citeseer', 'Pubmed', 'Flickr']:
-            args.lr = 1e-3
-        elif args.dataset == 'ACM':
-            args.lr = 5e-4
-        elif args.dataset == 'BlogCatalog':
-            args.lr = 3e-3
-        elif args.dataset == 'ogbn-arxiv':
-            args.lr = 1e-3
-
-    if args.num_epoch is None:
-        if args.dataset in ['Cora', 'Citeseer', 'Pubmed']:
-            args.num_epoch = 100
-        elif args.dataset in ['BlogCatalog', 'Flickr', 'ACM']:
-            args.num_epoch = 400
-        else:
-            args.num_epoch = 10
-
-    if args.dataset == 'Citeseer':
-        args.alpha = 0.8
-        args.seed = 4096
-        args.dropout = 0.3
-        args.hidden_dim = 32
-    elif args.dataset == 'Pubmed':
-        args.alpha = 0.8
-        args.seed = 4096
-        args.dropout = 0.3
-        args.hidden_dim = 128
-    elif args.dataset == 'Flickr':
-        args.alpha = 0.6
-        args.seed = 1024
-        args.dropout = 0.0
-        args.hidden_dim = 64
-    elif args.dataset == 'ACM':
-        args.alpha = 0.2
-        args.seed = 4096
-        args.dropout = 0.0
-        args.hidden_dim = 16
-        # args.lr = 1e-5
-        args.num_epoch = 300
-
     final_args_dict = {
         "dataset": args.dataset,
         "seed":args.seed,
         "model":{
-            "feat_size":IN_FEATURE_MAP[args.dataset],
+            "feat_size":args.feat_dim,
             "out_feats":args.out_feats
         },
         "fit":{
             "lr":args.lr,
-            "logdir":args.logdir,
             "num_epoch":args.num_epoch,
             "subgraph_size":args.subgraph_size,
             "device":args.device,

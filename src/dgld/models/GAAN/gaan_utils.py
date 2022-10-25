@@ -1,16 +1,15 @@
 import os,sys
 current_file_name = __file__
-current_dir=os.path.dirname(os.path.dirname(os.path.abspath(current_file_name)))
+current_dir=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(current_file_name))))
 if current_dir not in sys.path:
     sys.path.append(current_dir)
-from utils.common_params import IN_FEATURE_MAP
 
 
 def set_subargs(parser):
     parser.add_argument('--num_epoch', type=int, help='Training epoch')
-    parser.add_argument('--gen_hid_dims', type=list, default=[32,64,128],
+    parser.add_argument('--gen_hid_dims', nargs='+', type=int, default=[32,64,128],
                     help='generator hidden dims list')
-    parser.add_argument('--ed_hid_dims', type=list, default=[32,64],
+    parser.add_argument('--ed_hid_dims', nargs='+', type=int, default=[32,64],
                     help='discriminator hidden dims list')
     parser.add_argument('--out_dim', type=int, default=128,
                     help='discriminator of encoder out')
@@ -25,27 +24,13 @@ def set_subargs(parser):
     parser.add_argument('--num_neighbor',type=int,default=200,help='the simple number of neighbor -1 for all neighbor')
 
 def get_subargs(args):
-    if args.num_epoch is None:
-        if args.dataset in ['Cora', 'Citeseer']:
-            args.num_epoch = 100
-        elif args.dataset in ['Pubmed','BlogCatalog', 'Flickr', 'ACM']:
-            args.num_epoch = 30
-        else:
-            args.num_epoch = 10
-    if args.dataset in ['BlogCatalog','ogbn-arxiv']:
-        args.alpha = 0.1
-    if args.dataset == 'Flickr':
-        args.weight_decay = 0.001
-    if args.dataset == 'ACM':
-        args.alpha = 0
-
     final_args_dict = {
         "dataset": args.dataset,
         "seed": args.seed,
         "model":{
             "noise_dim": args.noise_dim,
             "gen_hid_dims": args.gen_hid_dims,
-            "attrb_dim": IN_FEATURE_MAP[args.dataset],
+            "attrb_dim": args.feat_dim,
             "ed_hid_dims": args.ed_hid_dims,
             "out_dim": args.out_dim,
             "dropout": args.dropout

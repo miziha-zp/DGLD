@@ -6,7 +6,6 @@ import torch.nn.functional as F
 import torch
 # from layers import GraphConvolution
 from dgl.nn.pytorch import GraphConv
-from torch.utils.tensorboard import SummaryWriter
 from .alarm_utils import train_step, test_step, normalize_adj
 from utils.early_stopping import EarlyStopping
 
@@ -76,12 +75,12 @@ class Encoder(nn.Module):
             x[i] = F.dropout(x[i], self.dropout, training=self.training)
             x[i] = F.relu(self.gc2(g, x[i]))
         
-        if self.agg_type is 1:
+        if self.agg_type == 1:
             rand_weight = torch.rand(1, self.view_num)
             for i in range(0, self.view_num):
                 x[i] = rand_weight * x[i]
             x = torch.cat([i for i in x], 1)
-        elif self.agg_type is 2:
+        elif self.agg_type == 2:
             manual_weight = torch.tensor(self.agg_vec)
             for i in range(0, self.view_num):
                 x[i] = manual_weight * x[i]
@@ -245,7 +244,7 @@ class ALARM(nn.Module):
         super(ALARM, self).__init__()
         self.model = ALARMModel(feat_size, hidden_size, dropout, view_num, agg_type, agg_vec)
     
-    def fit(self,graph,lr=5e-3,logdir='tmp',num_epoch=1,alpha=0.8,device='cpu'):
+    def fit(self,graph,lr=5e-3,num_epoch=1,alpha=0.8,device='cpu'):
         """Fitting model
 
         Parameters
@@ -254,8 +253,6 @@ class ALARM(nn.Module):
             graph dataset
         lr : float, optional
             learning rate, by default 5e-3
-        logdir : str, optional
-            log dir, by default 'tmp'
         num_epoch : int, optional
             number of training epochs , by default 1
         alpha : float, optional
@@ -293,8 +290,7 @@ class ALARM(nn.Module):
         else:
             device = torch.device("cpu")
             print('Using cpu!!!')      
-        
-        writer = SummaryWriter(log_dir=logdir)
+ 
         early_stop = EarlyStopping(early_stopping_rounds=10, patience=10)
         for epoch in range(num_epoch):
             
@@ -302,12 +298,7 @@ class ALARM(nn.Module):
                 self.model, optimizer, graph, features,adj_label,alpha)
             print("Epoch:", '%04d' % (epoch), "train_loss=", "{:.5f}".format(loss.item(
             )), "train/struct_loss=", "{:.5f}".format(struct_loss.item()), "train/feat_loss=", "{:.5f}".format(feat_loss.item()))
-            writer.add_scalars(
-                "loss",
-                {"loss": loss, "struct_loss": struct_loss, "feat_loss": feat_loss},
-                epoch,
-            )
-            writer.flush()
+
             early_stop(loss, self.model)
             if early_stop.isEarlyStopping():
                 print(f"Early stopping in round {epoch}")

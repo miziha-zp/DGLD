@@ -100,6 +100,13 @@ dgld.models.GAAN
 
    dgld.models.GAAN
 
+dgld.models.GCNAE
+-----------
+.. toctree::
+   :maxdepth: 4
+
+   dgld.models.GCNAE
+
 dgld.models.GUIDE
 -----------
 .. toctree::
@@ -107,12 +114,12 @@ dgld.models.GUIDE
 
    dgld.models.GUIDE
 
-dgld.models.OCGNN
+dgld.models.MLPAE
 -----------
 .. toctree::
    :maxdepth: 4
 
-   dgld.models.OCGNN
+   dgld.models.MLPAE
 
 dgld.models.ONE
 -----------
@@ -120,6 +127,13 @@ dgld.models.ONE
    :maxdepth: 4
 
    dgld.models.ONE
+
+dgld.models.SCAN
+-----------
+.. toctree::
+   :maxdepth: 4
+
+   dgld.models.SCAN
 
 dgld.models.SLGAD
 -----------

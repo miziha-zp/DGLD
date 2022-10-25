@@ -1,17 +1,13 @@
 """
 AnomalyDAE: Dual autoencoder for anomaly detection on attributed networks
 """
-from turtle import forward
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dgl.nn.pytorch import GATConv  # ,GATConv1
 from torch import nn
-import dgl
 import numpy as np
-from torch.utils.tensorboard import SummaryWriter
-from .anomalydae_utils import train_step, test_step,normalize_adj
-
+from .anomalydae_utils import train_step, test_step
+from utils.early_stopping import EarlyStopping
 
 class AnomalyDAE(nn.Module):
     """AnomalyDAE: Dual autoencoder for anomaly detection on attributed networks
@@ -36,7 +32,7 @@ class AnomalyDAE(nn.Module):
         self.model = AnomalyDAEModel(in_feat_dim=feat_size,in_num_dim=num_nodes,embed_dim=embed_dim,
                         out_dim=out_dim,dropout=dropout)
     
-    def fit(self,graph,lr=5e-3,logdir='tmp',num_epoch=1,alpha=0.7,eta=5.0,theta=40.0,device='cpu'):
+    def fit(self,graph,lr=5e-3,num_epoch=1,alpha=0.7,eta=5.0,theta=40.0,device='cpu',patience=10):
         """Fitting model
 
         Parameters
@@ -45,8 +41,6 @@ class AnomalyDAE(nn.Module):
             graph dataset
         lr : float, optional
             learning rate, by default 5e-3
-        logdir : str, optional
-            log dir, by default 'tmp'
         num_epoch : int, optional
             number of training epochs , by default 1
         alpha : float, optional
@@ -57,6 +51,8 @@ class AnomalyDAE(nn.Module):
             structure penalty balance parameter, by default 40.0
         device : str, optional
             cuda id, by default 'cpu'
+        patience : int, optional
+            early stop patience , by default 10
 
         """
         print('*'*20,'training','*'*20)
@@ -85,20 +81,21 @@ class AnomalyDAE(nn.Module):
         graph = graph.to(device)
         features = features.to(device)
         adj_label = adj_label.to(device)
-    
-        writer = SummaryWriter(log_dir=logdir)
-        
+
+        early_stop = EarlyStopping(early_stopping_rounds=patience,patience = patience)
+
         for epoch in range(num_epoch):
             loss, struct_loss, feat_loss,_ = train_step(
             self.model, optimizer, graph, features,adj_label,alpha,eta,theta)
             print("Epoch:", '%04d' % (epoch), "train_loss=", "{:.5f}".format(loss.item(
             )), "train/struct_loss=", "{:.5f}".format(struct_loss.item()), "train/feat_loss=", "{:.5f}".format(feat_loss.item()))
-            writer.add_scalars(
-                "loss",
-                {"loss": loss, "struct_loss": struct_loss, "feat_loss": feat_loss},
-                epoch,
-            )
-            writer.flush()
+    
+
+            early_stop(loss, self.model)
+ 
+            if early_stop.isEarlyStopping():
+                print(f"Early stopping in round {epoch}")
+                break
 
 
     def predict(self, graph, alpha=0.7,eta=5.0,theta=40.0,device='cpu'):

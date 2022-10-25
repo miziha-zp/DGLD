@@ -1,13 +1,13 @@
 import numpy as np 
 import os,sys
 current_file_name = __file__
-current_dir=os.path.dirname(os.path.dirname(os.path.abspath(current_file_name)))
+current_dir=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(current_file_name))))
 if current_dir not in sys.path:
     sys.path.append(current_dir)
-from utils.common_params import NUM_NODES_MAP
+
 
 def set_subargs(parser):
-    parser.add_argument('--num_epoch', type=int, help='Training epoch')
+    parser.add_argument('--num_epoch', type=int, default=5, help='Training epoch')
     parser.add_argument('--K', type=int, default=8,help='The embedding size of graph nodes')
     parser.add_argument('--alpha', type=float, default=1,
                         help='balance parameter')
@@ -16,33 +16,11 @@ def set_subargs(parser):
     parser.add_argument('--gamma', type=float, default=1,
                         help='balance parameter')
 def get_subargs(args):
-
-    if args.num_epoch is None:
-        args.num_epoch = 5
-
-    if args.dataset == 'Cora':
-        args.alpha,args.beta,args.gamma = 1,1,4
-        
-    elif args.dataset == 'Citeseer':
-        args.alpha,args.beta,args.gamma = 0,4,1
-
-    elif args.dataset == 'Pubmed':
-        args.alpha,args.beta,args.gamma = 2,4,1
-
-    elif args.dataset == 'BlogCatalog':
-        args.alpha,args.beta,args.gamma = 1,1,1
-
-    elif args.dataset == 'Flickr':
-        args.alpha,args.beta,args.gamma = 3,2,1
-
-    elif args.dataset == 'ACM':
-        args.alpha,args.beta,args.gamma = 4,0,1
-
     final_args_dict = {
         "dataset": args.dataset,
         "seed": args.seed,
         "model":{
-            "node_num":NUM_NODES_MAP[args.dataset],
+            "node_num":args.num_nodes,
             "K":args.K
         },
         "fit":{

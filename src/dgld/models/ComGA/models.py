@@ -1,22 +1,15 @@
 """
 ComGA: Community-Aware Attributed Graph Anomaly Detection
 """
-from turtle import forward
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from dgl.nn.pytorch import GraphConv
 from torch import nn
-import dgl
-import scipy.sparse as sp
-import scipy.io as sio
-from sklearn.metrics import precision_score, roc_auc_score
-import networkx as nx
-import sys
-import numpy as np
-from torch.utils.tensorboard import SummaryWriter
-from .comga_utils import train_step, test_step,normalize_adj
 
+import numpy as np
+from .comga_utils import train_step, test_step
+from utils.early_stopping import EarlyStopping
 
 class ComGA(nn.Module):
     """ComGA: Community-Aware Attributed Graph Anomaly Detection
@@ -43,7 +36,7 @@ class ComGA(nn.Module):
         self.model = ComGAModel(num_nodes=num_nodes,num_feats=num_feats,
                         n_enc_1=n_enc_1,n_enc_2=n_enc_2,n_enc_3=n_enc_3,dropout=dropout)
     
-    def fit(self,graph,lr=5e-3,logdir='tmp',num_epoch=1,alpha=0.7,eta=5.0,theta=40.0,device='cpu'):
+    def fit(self,graph,lr=5e-3,num_epoch=1,alpha=0.7,eta=5.0,theta=40.0,device='cpu',patience=10):
         """Fitting model
 
         Parameters
@@ -52,8 +45,6 @@ class ComGA(nn.Module):
             graph dataset
         lr : float, optional
             learning rate, by default 5e-3
-        logdir : str, optional
-            log dir, by default 'tmp'
         num_epoch : int, optional
             number of training epochs , by default 1
         alpha : float, optional
@@ -64,6 +55,8 @@ class ComGA(nn.Module):
             structure penalty balance parameter, by default 40.0
         device : str, optional
             cuda id, by default 'cpu'
+        patience : int, optional
+            early stop patience , by default 10
         """
         print('*'*20,'training','*'*20)
 
@@ -107,8 +100,9 @@ class ComGA(nn.Module):
         adj_label = adj_label.to(device)
         B = B.to(device)
     
-        writer = SummaryWriter(log_dir=logdir)
-        
+
+        early_stop = EarlyStopping(early_stopping_rounds=patience,patience = patience)
+
         for epoch in range(num_epoch):
             loss,struct_loss, feat_loss,kl_loss,re_loss,_ = train_step(
                 self.model, optimizer, graph, features, B,adj_label,alpha,eta,theta,device)
@@ -116,12 +110,13 @@ class ComGA(nn.Module):
                     )),"train/kl_loss=", "{:.5f}".format(kl_loss.item()),
                     "train/struct_loss=", "{:.5f}".format(struct_loss.item()), "train/feat_loss=", "{:.5f}".format(feat_loss.item()),
             )
-            writer.add_scalars(
-                "loss",
-                {"loss": loss, "struct_loss": struct_loss, "feat_loss": feat_loss},
-                epoch,
-            )
-            writer.flush()
+
+
+            early_stop(loss, self.model)
+ 
+            if early_stop.isEarlyStopping():
+                print(f"Early stopping in round {epoch}")
+                break
 
 
     def predict(self, graph, alpha=0.7,eta=5.0,theta=40.0,device='cpu'):

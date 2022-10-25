@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from torch.utils.tensorboard import SummaryWriter
 
 import dgl
 from dgl.nn import GATConv
@@ -38,7 +37,6 @@ class CONAD(nn.Module):
             graph,
             lr=1e-3,
             weight_decay=0.,
-            logdir='tmp',
             num_epoch=1,
             margin=0.5,
             alpha=0.9,
@@ -47,6 +45,9 @@ class CONAD(nn.Module):
             rate=0.2,
             contrast_type='siamese',
             batch_size=0,
+            num_added_edge=50, 
+            surround=50, 
+            scale_factor=10
             ):
         """Fitting model
 
@@ -58,8 +59,6 @@ class CONAD(nn.Module):
             learning rate, by default 1e-3
         weight_decay : float, optional
             weight decay (L2 penalty), by default 0.
-        logdir : str, optional
-            log dir, by default 'tmp'
         num_epoch : int, optional
             number of training epochs, by default 1
         margin : float, optional 
@@ -73,10 +72,15 @@ class CONAD(nn.Module):
         rate : float, optional
             the rate of anomalies, by default 0.2
         contrast_type : str, optional
-            categories of contrastive loss functions, by default 'siamese'
+            categories of contrastive loss function, by default 'siamese'
         batch_size : int, optional
             the size of training batch, by default 0
-            
+        num_added_edge : int
+            parameter for generating high-degree anomalies, by default 50
+        surround : int
+            parameter for generating outlying anomalies, by default 50
+        scale_factor : float
+            parameter for generating disproportionate anomalies, by default 10    
         """
         print('*'*20,'training','*'*20)
         
@@ -97,12 +101,11 @@ class CONAD(nn.Module):
         graph = graph.remove_self_loop()
         
         g_orig = graph.add_self_loop()  
-        transform = KnowledgeModel(rate=rate, num_added_edge=50, surround=50, scale_factor=10)
+        transform = KnowledgeModel(rate=rate, num_added_edge=num_added_edge, surround=surround, scale_factor=scale_factor)
         g_aug = transform(deepcopy(graph)).add_self_loop() 
         
         self.model.to(device) 
         
-        writer = SummaryWriter(log_dir=logdir)
         early_stop = EarlyStopping(early_stopping_rounds=10, patience=20)
         
         if batch_size == 0:
@@ -113,7 +116,6 @@ class CONAD(nn.Module):
                 
                 loss_epoch = train_step(self.model, optimizer, criterion, g_orig, g_aug, alpha=alpha, eta=eta)
                 print("Epoch:", '%04d' % (epoch), "train/loss=", "{:.5f}".format(loss_epoch.item()))
-                writer.flush()
                 
                 early_stop(loss_epoch.cpu().detach(), self.model)
                 if early_stop.isEarlyStopping():
@@ -123,8 +125,7 @@ class CONAD(nn.Module):
             print("batch graph training!!!")
             for epoch in range(num_epoch):
                 loss = train_step_batch(self.model, optimizer, criterion, g_orig, g_aug, alpha, eta, batch_size, device)
-                print("Epoch:", '%04d' % (epoch), "train/loss=", "{:.5f}".format(loss))   
-                writer.add_scalar('train/loss', loss, epoch)    
+                print("Epoch:", '%04d' % (epoch), "train/loss=", "{:.5f}".format(loss))    
                 
                 early_stop(loss, self.model)
                 if early_stop.isEarlyStopping():

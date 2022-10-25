@@ -16,56 +16,29 @@ import dgl
 from dgld.utils.common import loadargs_from_json
 
 def set_subargs(parser):
-    parser.add_argument('--logdir', type=str, default='tmp')
     parser.add_argument('--num_epoch', type=int, default=100, help='Training epoch')
-    parser.add_argument('--disc_update_times', type=int, default=1)
-    parser.add_argument('--gen_update_times', type=int, default=5)
+    parser.add_argument('--disc_update_times', type=int, default=1, help="number of discriminator updates")
+    parser.add_argument('--gen_update_times', type=int, default=5, help="number of generator updates")
     parser.add_argument('--lr_all', type=float, default=0.001, help='learning rate')
     parser.add_argument('--lr_disc', type=float, default=0.001, help='learning rate')
     parser.add_argument('--lr_gen', type=float, default=0.001, help='learning rate')
-    parser.add_argument('--weight_decay', type=float, default=0.)
-    parser.add_argument('--dropout', type=float, default=0.)
-    parser.add_argument('--batch_size', type=int, default=0)
-    parser.add_argument('--max_len', type=int, default=0)
-    parser.add_argument('--restart', type=float, default=0.)
-    parser.add_argument('--num_neighbors', type=int, default=-1)
-    parser.add_argument('--embedding_dim', type=int, default=32)
-    parser.add_argument('--verbose', type=bool, default=True)
+    parser.add_argument('--weight_decay', type=float, default=0., help="weight decay (L2 penalty)")
+    parser.add_argument('--dropout', type=float, default=0., help="rate of dropout")
+    parser.add_argument('--batch_size', type=int, default=0, help="size of training batch")
+    parser.add_argument('--max_len', type=int, default=0, help="maximum length of the truncated random walk")
+    parser.add_argument('--restart', type=float, default=0., help="probability of restart")
+    parser.add_argument('--num_neighbors', type=int, default=-1, help="number of sampling neighbors")
+    parser.add_argument('--embedding_dim', type=int, default=32, help="dimension of embedding")
+    parser.add_argument('--verbose', type=lambda x: x.lower() == 'true', default=True, help="verbose or not")
     
 
-def get_subargs(args):
-    if os.path.exists(args.logdir):
-        shutil.rmtree(args.logdir)
-
-    best_config = loadargs_from_json('src/dgld/config/AdONE.json')[args.dataset]
-    config = vars(args)
-    config.update(best_config)
-    args = argparse.Namespace(**config)
-            
-    in_feature_map = {
-        "Cora":1433,
-        "Citeseer":3703,
-        "Pubmed":500,
-        "BlogCatalog":8189,
-        "Flickr":12047,
-        "ACM":8337,
-        "ogbn-arxiv":128,
-    }
-    num_nodes_map={
-        "Cora":2708,
-        "Citeseer":3327,
-        "Pubmed":19717,
-        "BlogCatalog":5196,
-        "Flickr":7575,
-        "ACM":16484,
-        "ogbn-arxiv":169343,
-    }
+def get_subargs(args): 
     final_args_dict = {
         "dataset": args.dataset,
         "seed": args.seed,
         "model":{
-            "feat_size": in_feature_map[args.dataset],
-            "num_nodes": num_nodes_map[args.dataset],
+            "feat_size": args.feat_dim,
+            "num_nodes": args.num_nodes,
             "embedding_dim": args.embedding_dim,
             "dropout": args.dropout,
         },
@@ -74,7 +47,6 @@ def get_subargs(args):
             "lr_disc": args.lr_disc,
             "lr_gen": args.lr_gen,
             "weight_decay": args.weight_decay,
-            "logdir": args.logdir,
             "num_epoch": args.num_epoch,
             "disc_update_times": args.disc_update_times,
             "gen_update_times": args.gen_update_times,
